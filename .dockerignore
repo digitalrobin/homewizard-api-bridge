@@ -1,0 +1,7 @@
+.git
+.gitignore
+.idea
+.data
+homewizard-api-bridge
+README.md
+docker-compose.yml

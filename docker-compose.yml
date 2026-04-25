@@ -1,0 +1,15 @@
+services:
+  homewizard-api-bridge:
+    image: ghcr.io/digitalrobin/homewizard-api-bridge:latest
+    container_name: homewizard-api-bridge
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      HOMEWIZARD_HOST: 192.168.1.50
+      HOMEWIZARD_USERNAME: local/loxone-bridge
+      HOMEWIZARD_INSECURE_SKIP_VERIFY: "true"
+      BIND_ADDR: :8080
+      DATA_DIR: /data
+    volumes:
+      - ./data:/data

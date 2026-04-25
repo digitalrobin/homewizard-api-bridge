@@ -88,6 +88,78 @@ export DATA_DIR=.data
 go run .
 ```
 
+## Docker
+
+Build the image locally:
+
+```bash
+docker build -t homewizard-api-bridge .
+```
+
+Run it directly:
+
+```bash
+docker run -d \
+  --name homewizard-api-bridge \
+  -p 8080:8080 \
+  -e HOMEWIZARD_HOST=192.168.1.50 \
+  -e HOMEWIZARD_USERNAME=local/loxone-bridge \
+  -e HOMEWIZARD_INSECURE_SKIP_VERIFY=true \
+  -v $(pwd)/data:/data \
+  homewizard-api-bridge
+```
+
+Or use the included compose file:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Important for Docker and Compose:
+
+- Keep `/data` mounted so the pairing token survives container recreation.
+- Update `HOMEWIZARD_HOST` in `docker-compose.yml` to your P1 meter IP or hostname.
+- The included compose file publishes the bridge on port `8080`.
+
+## Hosted image
+
+This repo is set up to publish a Docker image to GitHub Container Registry on pushes to `main` and on version tags.
+
+Published image:
+
+```text
+ghcr.io/digitalrobin/homewizard-api-bridge:latest
+```
+
+Other generated tags include:
+
+- `ghcr.io/digitalrobin/homewizard-api-bridge:main`
+- `ghcr.io/digitalrobin/homewizard-api-bridge:sha-<commit>`
+- `ghcr.io/digitalrobin/homewizard-api-bridge:v1.0.0` when you push a matching Git tag
+
+The publish workflow lives in [.github/workflows/docker.yml](/Users/robin/Documents/projects/homewizard-bridge/.github/workflows/docker.yml).
+
+After you push this repository to GitHub:
+
+1. Open the repository on GitHub.
+2. Go to `Actions`.
+3. Let the `Publish Docker Image` workflow run on `main`, or trigger it manually.
+4. On your server, use the included `docker-compose.yml` and pull the image directly from GHCR.
+
+If your GHCR package is private, log in on the server first:
+
+```bash
+echo YOUR_GITHUB_TOKEN | docker login ghcr.io -u digitalrobin --password-stdin
+```
+
+Then deploy:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
 The first time, pair it:
 
 1. Start the bridge.
