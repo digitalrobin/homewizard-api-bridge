@@ -109,8 +109,10 @@ func (s *server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":          true,
-		"token_ready": s.client.tokenStore.Get() != "",
+		"ok":            true,
+		"api_mode":      s.client.mode,
+		"auth_required": s.client.AuthRequired(),
+		"token_ready":   s.client.tokenStore.Get() != "",
 	})
 }
 
@@ -122,12 +124,15 @@ func (s *server) handleAuthStatus(w http.ResponseWriter, r *http.Request) {
 
 	status := s.client.tokenStore.Status()
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":            true,
-		"token_ready":   status.Token != "",
-		"homewizard":    s.client.baseURL,
-		"user":          s.client.userName,
-		"token_updated": status.UpdatedAt,
-		"ui":            "/ui",
+		"ok":             true,
+		"api_mode":       s.client.mode,
+		"auth_required":  s.client.AuthRequired(),
+		"pair_supported": s.client.AuthRequired(),
+		"token_ready":    status.Token != "",
+		"homewizard":     s.client.baseURL,
+		"user":           s.client.userName,
+		"token_updated":  status.UpdatedAt,
+		"ui":             "/ui",
 	})
 }
 
@@ -148,6 +153,15 @@ func (s *server) handlePair(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeProxyError(w, err)
+		return
+	}
+
+	if !s.client.AuthRequired() {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":      true,
+			"message": "Pairing is not required in HTTP/v1 mode. The bridge can read the device directly.",
+			"mode":    s.client.mode,
+		})
 		return
 	}
 
@@ -186,12 +200,14 @@ func (s *server) handleStatus(w http.ResponseWriter, r *http.Request) {
 
 	sort.Strings(unavailable)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":          true,
-		"device":      snapshot.Device,
-		"measurement": snapshot.Measurement,
-		"utilities":   snapshot.Utilities,
-		"values":      values,
-		"missing":     unavailable,
+		"ok":            true,
+		"api_mode":      snapshot.APIMode,
+		"auth_required": snapshot.AuthRequired,
+		"device":        snapshot.Device,
+		"measurement":   snapshot.Measurement,
+		"utilities":     snapshot.Utilities,
+		"values":        values,
+		"missing":       unavailable,
 	})
 }
 

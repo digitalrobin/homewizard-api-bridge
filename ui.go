@@ -5,7 +5,7 @@ const authPageHTML = `<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HomeWizard Bridge Pairing</title>
+  <title>HomeWizard Bridge Setup</title>
   <style>
     :root {
       color-scheme: light;
@@ -199,8 +199,8 @@ const authPageHTML = `<!doctype html>
   <main class="shell">
     <section class="hero">
       <div class="eyebrow">HomeWizard Bridge</div>
-      <h1>Pairing Console</h1>
-      <p class="subtitle">Use this page to trigger the HomeWizard v2 pairing flow, monitor token status, and confirm when the bridge is ready for Loxone.</p>
+      <h1>Bridge Setup</h1>
+      <p class="subtitle">Use this page to see whether the bridge is running HomeWizard v1 over HTTP or HomeWizard v2 over HTTPS, trigger pairing when needed, and confirm when the bridge is ready for Loxone.</p>
     </section>
 
     <section class="content">
@@ -215,14 +215,27 @@ const authPageHTML = `<!doctype html>
           <div id="target" class="value">-</div>
         </article>
         <article class="card">
+          <div class="label">API Mode</div>
+          <div id="mode" class="value">-</div>
+        </article>
+        <article class="card">
           <div class="label">Bridge User</div>
           <div id="user" class="value">-</div>
+        </article>
+        <article class="card">
+          <div class="label">Auth Flow</div>
+          <div id="authFlow" class="value">-</div>
         </article>
         <article class="card">
           <div class="label">Token Updated</div>
           <div id="updated" class="value">Not paired yet</div>
         </article>
       </div>
+
+      <article class="card">
+        <div class="label">Mode Guidance</div>
+        <div id="modeHint" class="message">Checking whether the bridge should use HomeWizard v1 over HTTP or HomeWizard v2 over HTTPS…</div>
+      </article>
 
       <article class="card">
         <div class="label">Actions</div>
@@ -240,10 +253,12 @@ const authPageHTML = `<!doctype html>
       <article class="card">
         <div class="label">How to pair</div>
         <ol>
-          <li>Press <strong>Start / Retry Pairing</strong>.</li>
-          <li>If the bridge tells you pairing is not enabled yet, press the button on the HomeWizard P1 meter.</li>
+          <li>If the target starts with <strong>http://</strong>, the bridge uses HomeWizard v1 and does not need pairing.</li>
+          <li>If the target starts with <strong>https://</strong>, the bridge uses HomeWizard v2 and needs pairing.</li>
+          <li>In v2 mode, press <strong>Start / Retry Pairing</strong>.</li>
+          <li>If the bridge says pairing is not enabled yet, press the button on the HomeWizard P1 meter.</li>
           <li>Press <strong>Start / Retry Pairing</strong> again within 30 seconds.</li>
-          <li>When the token is stored, the bridge is ready and Loxone can use the metric endpoints.</li>
+          <li>When the bridge reports ready, Loxone can use the metric endpoints.</li>
         </ol>
       </article>
     </section>
@@ -251,6 +266,9 @@ const authPageHTML = `<!doctype html>
 
   <script>
     const pairingState = document.getElementById('pairingState');
+    const mode = document.getElementById('mode');
+    const authFlow = document.getElementById('authFlow');
+    const modeHint = document.getElementById('modeHint');
     const target = document.getElementById('target');
     const user = document.getElementById('user');
     const updated = document.getElementById('updated');
@@ -258,11 +276,12 @@ const authPageHTML = `<!doctype html>
     const pairButton = document.getElementById('pairButton');
     const refreshButton = document.getElementById('refreshButton');
 
-    function setStatus(tokenReady) {
-      pairingState.className = tokenReady ? 'status-pill' : 'status-pill warn';
-      pairingState.innerHTML = tokenReady
-        ? '<span class="dot"></span><span>Token ready. The bridge is paired.</span>'
-        : '<span class="dot"></span><span>No token yet. Pairing still needed.</span>';
+    function setStatus(tokenReady, authRequired) {
+      const ready = authRequired ? tokenReady : true;
+      pairingState.className = ready ? 'status-pill' : 'status-pill warn';
+      pairingState.innerHTML = ready
+        ? '<span class="dot"></span><span>Bridge ready for Loxone.</span>'
+        : '<span class="dot"></span><span>HomeWizard v2 pairing still needed.</span>';
     }
 
     function setMessage(text, detail) {
@@ -282,10 +301,18 @@ const authPageHTML = `<!doctype html>
       }
 
       const data = await response.json();
-      setStatus(Boolean(data.token_ready));
+      const authRequired = Boolean(data.auth_required);
+      setStatus(Boolean(data.token_ready), authRequired);
+      mode.textContent = (data.api_mode || '-').toUpperCase();
+      authFlow.textContent = authRequired ? 'Pairing required' : 'No pairing needed';
+      modeHint.textContent = authRequired
+        ? 'The configured HomeWizard target uses HTTPS, so the bridge will use API v2. Pairing is required before metric routes can be used.'
+        : 'The configured HomeWizard target uses HTTP, so the bridge will use API v1. Pairing is not required and the bridge can read the device directly.';
       target.textContent = data.homewizard || '-';
       user.textContent = data.user || '-';
-      updated.textContent = data.token_updated ? new Date(data.token_updated).toLocaleString() : 'Not paired yet';
+      updated.textContent = data.token_updated ? new Date(data.token_updated).toLocaleString() : (authRequired ? 'Not paired yet' : 'Not applicable');
+      pairButton.disabled = !authRequired;
+      pairButton.textContent = authRequired ? 'Start / Retry Pairing' : 'Pairing Not Needed';
       return data;
     }
 

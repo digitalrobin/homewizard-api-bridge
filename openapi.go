@@ -52,8 +52,8 @@ func buildOpenAPISpec(routes map[string]metricRoute) []byte {
 		},
 		"/ui": {
 			"get": {
-				Summary:     "Pairing console",
-				Description: "Shows the browser-based HomeWizard pairing and authentication monitor page.",
+				Summary:     "Setup console",
+				Description: "Shows the browser-based HomeWizard setup page with v1/v2 mode guidance and pairing controls when needed.",
 				Tags:        []string{"system"},
 				Responses: map[string]openAPIResponse{
 					"200": {Description: "HTML page"},
@@ -83,10 +83,10 @@ func buildOpenAPISpec(routes map[string]metricRoute) []byte {
 		"/pair": {
 			"post": {
 				Summary:     "Start or retry pairing",
-				Description: "Triggers the HomeWizard v2 pairing flow. Call it, press the P1 meter button if needed, then call it again within 30 seconds.",
+				Description: "Triggers the HomeWizard v2 pairing flow when HTTPS/v2 mode is configured. In HTTP/v1 mode, pairing is not required and this endpoint returns a friendly no-op response.",
 				Tags:        []string{"system"},
 				Responses: map[string]openAPIResponse{
-					"200": {Description: "Pairing succeeded"},
+					"200": {Description: "Pairing succeeded or pairing not required"},
 					"409": {Description: "Pairing pending button press"},
 					"502": {Description: "Upstream HomeWizard error"},
 				},

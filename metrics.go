@@ -24,10 +24,10 @@ func metricRoutes() []metricRoute {
 			Path:        "/electricity/usage",
 			Description: "Current net electricity usage in watts. Negative export from HomeWizard is converted to positive export on the dedicated export endpoint.",
 			Unit:        "W",
-			Source:      "measurement.power_w",
+			Source:      "measurement.power_w or measurement.active_power_w",
 			Example:     "428",
 			Resolver: func(s *snapshot) (any, error) {
-				return measurementNumber(s, "power_w")
+				return measurementNumberAny(s, "power_w", "active_power_w")
 			},
 		},
 		{
@@ -35,10 +35,10 @@ func metricRoutes() []metricRoute {
 			Path:        "/electricity/import-usage",
 			Description: "Current imported electricity usage in watts.",
 			Unit:        "W",
-			Source:      "derived from measurement.power_w",
+			Source:      "derived from measurement.power_w or measurement.active_power_w",
 			Example:     "428",
 			Resolver: func(s *snapshot) (any, error) {
-				value, err := measurementNumber(s, "power_w")
+				value, err := measurementNumberAny(s, "power_w", "active_power_w")
 				if err != nil {
 					return nil, err
 				}
@@ -50,10 +50,10 @@ func metricRoutes() []metricRoute {
 			Path:        "/electricity/export-usage",
 			Description: "Current exported electricity usage in watts.",
 			Unit:        "W",
-			Source:      "derived from measurement.power_w",
+			Source:      "derived from measurement.power_w or measurement.active_power_w",
 			Example:     "678",
 			Resolver: func(s *snapshot) (any, error) {
-				value, err := measurementNumber(s, "power_w")
+				value, err := measurementNumberAny(s, "power_w", "active_power_w")
 				if err != nil {
 					return nil, err
 				}
@@ -65,10 +65,10 @@ func metricRoutes() []metricRoute {
 			Path:        "/electricity/total-usage",
 			Description: "Total imported electricity in kWh.",
 			Unit:        "kWh",
-			Source:      "measurement.energy_import_kwh",
+			Source:      "measurement.energy_import_kwh or measurement.total_power_import_kwh",
 			Example:     "13779.338",
 			Resolver: func(s *snapshot) (any, error) {
-				return measurementNumber(s, "energy_import_kwh")
+				return measurementNumberAny(s, "energy_import_kwh", "total_power_import_kwh")
 			},
 		},
 		{
@@ -76,20 +76,20 @@ func metricRoutes() []metricRoute {
 			Path:        "/electricity/total-export",
 			Description: "Total exported electricity in kWh.",
 			Unit:        "kWh",
-			Source:      "measurement.energy_export_kwh",
+			Source:      "measurement.energy_export_kwh or measurement.total_power_export_kwh",
 			Example:     "2876.514",
 			Resolver: func(s *snapshot) (any, error) {
-				return measurementNumber(s, "energy_export_kwh")
+				return measurementNumberAny(s, "energy_export_kwh", "total_power_export_kwh")
 			},
 		},
 		{
 			Group:       "electricity",
 			Path:        "/electricity/tariff",
 			Description: "Currently active tariff.",
-			Source:      "measurement.tariff",
+			Source:      "measurement.tariff or measurement.active_tariff",
 			Example:     "2",
 			Resolver: func(s *snapshot) (any, error) {
-				return measurementNumber(s, "tariff")
+				return measurementNumberAny(s, "tariff", "active_tariff")
 			},
 		},
 		{
@@ -97,134 +97,140 @@ func metricRoutes() []metricRoute {
 			Path:        "/electricity/usage-l1",
 			Description: "Current electricity usage for phase L1 in watts.",
 			Unit:        "W",
-			Source:      "measurement.power_l1_w",
+			Source:      "measurement.power_l1_w or measurement.active_power_l1_w",
 			Example:     "-676",
-			Resolver:    func(s *snapshot) (any, error) { return measurementNumber(s, "power_l1_w") },
+			Resolver:    func(s *snapshot) (any, error) { return measurementNumberAny(s, "power_l1_w", "active_power_l1_w") },
 		},
 		{
 			Group:       "electricity",
 			Path:        "/electricity/usage-l2",
 			Description: "Current electricity usage for phase L2 in watts.",
 			Unit:        "W",
-			Source:      "measurement.power_l2_w",
+			Source:      "measurement.power_l2_w or measurement.active_power_l2_w",
 			Example:     "133",
-			Resolver:    func(s *snapshot) (any, error) { return measurementNumber(s, "power_l2_w") },
+			Resolver:    func(s *snapshot) (any, error) { return measurementNumberAny(s, "power_l2_w", "active_power_l2_w") },
 		},
 		{
 			Group:       "electricity",
 			Path:        "/electricity/usage-l3",
 			Description: "Current electricity usage for phase L3 in watts.",
 			Unit:        "W",
-			Source:      "measurement.power_l3_w",
+			Source:      "measurement.power_l3_w or measurement.active_power_l3_w",
 			Example:     "0",
-			Resolver:    func(s *snapshot) (any, error) { return measurementNumber(s, "power_l3_w") },
+			Resolver:    func(s *snapshot) (any, error) { return measurementNumberAny(s, "power_l3_w", "active_power_l3_w") },
 		},
 		{
 			Group:       "electricity",
 			Path:        "/electricity/current-total",
 			Description: "Total current in amperes.",
 			Unit:        "A",
-			Source:      "measurement.current_a",
+			Source:      "measurement.current_a or measurement.active_current_a",
 			Example:     "6",
-			Resolver:    func(s *snapshot) (any, error) { return measurementNumber(s, "current_a") },
+			Resolver:    func(s *snapshot) (any, error) { return measurementNumberAny(s, "current_a", "active_current_a") },
 		},
 		{
 			Group:       "electricity",
 			Path:        "/electricity/current-l1",
 			Description: "Current on phase L1 in amperes.",
 			Unit:        "A",
-			Source:      "measurement.current_l1_a",
+			Source:      "measurement.current_l1_a or measurement.active_current_l1_a",
 			Example:     "-4",
-			Resolver:    func(s *snapshot) (any, error) { return measurementNumber(s, "current_l1_a") },
+			Resolver:    func(s *snapshot) (any, error) { return measurementNumberAny(s, "current_l1_a", "active_current_l1_a") },
 		},
 		{
 			Group:       "electricity",
 			Path:        "/electricity/current-l2",
 			Description: "Current on phase L2 in amperes.",
 			Unit:        "A",
-			Source:      "measurement.current_l2_a",
+			Source:      "measurement.current_l2_a or measurement.active_current_l2_a",
 			Example:     "2",
-			Resolver:    func(s *snapshot) (any, error) { return measurementNumber(s, "current_l2_a") },
+			Resolver:    func(s *snapshot) (any, error) { return measurementNumberAny(s, "current_l2_a", "active_current_l2_a") },
 		},
 		{
 			Group:       "electricity",
 			Path:        "/electricity/current-l3",
 			Description: "Current on phase L3 in amperes.",
 			Unit:        "A",
-			Source:      "measurement.current_l3_a",
+			Source:      "measurement.current_l3_a or measurement.active_current_l3_a",
 			Example:     "0",
-			Resolver:    func(s *snapshot) (any, error) { return measurementNumber(s, "current_l3_a") },
+			Resolver:    func(s *snapshot) (any, error) { return measurementNumberAny(s, "current_l3_a", "active_current_l3_a") },
 		},
 		{
 			Group:       "electricity",
 			Path:        "/electricity/voltage",
 			Description: "Voltage in volts when the meter exposes a single combined voltage value.",
 			Unit:        "V",
-			Source:      "measurement.voltage_v",
+			Source:      "measurement.voltage_v or measurement.active_voltage_v",
 			Example:     "236.0",
-			Resolver:    func(s *snapshot) (any, error) { return measurementNumber(s, "voltage_v") },
+			Resolver:    func(s *snapshot) (any, error) { return measurementNumberAny(s, "voltage_v", "active_voltage_v") },
 		},
 		{
 			Group:       "electricity",
 			Path:        "/electricity/voltage-l1",
 			Description: "Voltage on phase L1 in volts.",
 			Unit:        "V",
-			Source:      "measurement.voltage_l1_v",
+			Source:      "measurement.voltage_l1_v or measurement.active_voltage_l1_v",
 			Example:     "236.0",
-			Resolver:    func(s *snapshot) (any, error) { return measurementNumber(s, "voltage_l1_v") },
+			Resolver:    func(s *snapshot) (any, error) { return measurementNumberAny(s, "voltage_l1_v", "active_voltage_l1_v") },
 		},
 		{
 			Group:       "electricity",
 			Path:        "/electricity/voltage-l2",
 			Description: "Voltage on phase L2 in volts.",
 			Unit:        "V",
-			Source:      "measurement.voltage_l2_v",
+			Source:      "measurement.voltage_l2_v or measurement.active_voltage_l2_v",
 			Example:     "232.6",
-			Resolver:    func(s *snapshot) (any, error) { return measurementNumber(s, "voltage_l2_v") },
+			Resolver:    func(s *snapshot) (any, error) { return measurementNumberAny(s, "voltage_l2_v", "active_voltage_l2_v") },
 		},
 		{
 			Group:       "electricity",
 			Path:        "/electricity/voltage-l3",
 			Description: "Voltage on phase L3 in volts.",
 			Unit:        "V",
-			Source:      "measurement.voltage_l3_v",
+			Source:      "measurement.voltage_l3_v or measurement.active_voltage_l3_v",
 			Example:     "235.1",
-			Resolver:    func(s *snapshot) (any, error) { return measurementNumber(s, "voltage_l3_v") },
+			Resolver:    func(s *snapshot) (any, error) { return measurementNumberAny(s, "voltage_l3_v", "active_voltage_l3_v") },
 		},
 		{
 			Group:       "electricity",
 			Path:        "/electricity/frequency",
 			Description: "Grid frequency in hertz.",
 			Unit:        "Hz",
-			Source:      "measurement.frequency_hz",
+			Source:      "measurement.frequency_hz or measurement.active_frequency_hz",
 			Example:     "50.0",
-			Resolver:    func(s *snapshot) (any, error) { return measurementNumber(s, "frequency_hz") },
+			Resolver:    func(s *snapshot) (any, error) { return measurementNumberAny(s, "frequency_hz", "active_frequency_hz") },
 		},
 		{
 			Group:       "electricity",
 			Path:        "/electricity/average-demand-15m",
 			Description: "15-minute average demand, useful for Belgian capacity tariff monitoring.",
 			Unit:        "W",
-			Source:      "measurement.average_power_15m_w",
+			Source:      "measurement.average_power_15m_w or measurement.active_power_average_w",
 			Example:     "123",
-			Resolver:    func(s *snapshot) (any, error) { return measurementNumber(s, "average_power_15m_w") },
+			Resolver: func(s *snapshot) (any, error) {
+				return measurementNumberAny(s, "average_power_15m_w", "active_power_average_w")
+			},
 		},
 		{
 			Group:       "electricity",
 			Path:        "/electricity/monthly-peak",
 			Description: "Current monthly peak demand.",
 			Unit:        "W",
-			Source:      "measurement.monthly_power_peak_w",
+			Source:      "measurement.monthly_power_peak_w or measurement.montly_power_peak_w",
 			Example:     "1111",
-			Resolver:    func(s *snapshot) (any, error) { return measurementNumber(s, "monthly_power_peak_w") },
+			Resolver: func(s *snapshot) (any, error) {
+				return measurementNumberAny(s, "monthly_power_peak_w", "montly_power_peak_w")
+			},
 		},
 		{
 			Group:       "electricity",
 			Path:        "/electricity/monthly-peak-timestamp",
 			Description: "Timestamp of the monthly peak demand.",
-			Source:      "measurement.monthly_power_peak_timestamp",
+			Source:      "measurement.monthly_power_peak_timestamp or measurement.montly_power_peak_timestamp",
 			Example:     "2024-06-04T10:11:22",
-			Resolver:    func(s *snapshot) (any, error) { return measurementString(s, "monthly_power_peak_timestamp") },
+			Resolver: func(s *snapshot) (any, error) {
+				return measurementStringAny(s, "monthly_power_peak_timestamp", "montly_power_peak_timestamp")
+			},
 		},
 		{
 			Group:       "gas",

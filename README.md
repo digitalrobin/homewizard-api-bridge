@@ -11,6 +11,7 @@ This project was developed with AI-assisted tooling and reviewed manually.
 - Pairs with the HomeWizard P1 Meter through the documented v2 `POST /api/user` flow.
 - Stores the returned bearer token locally in `.data/token.json`.
 - Keeps HomeWizard-specific API details inside a small client layer.
+- Supports both HomeWizard v1 and v2 behind the same bridge routes.
 - Exposes explicit, stable electricity, gas, and water endpoints that return plain text values.
 - Keeps a few raw/debug routes available as JSON or plain text.
 
@@ -81,6 +82,12 @@ Optional:
 export HOMEWIZARD_TOKEN=YOUR_EXISTING_TOKEN
 export DATA_DIR=.data
 ```
+
+Version selection is based on the scheme in `HOMEWIZARD_HOST`:
+
+- `HOMEWIZARD_HOST=http://192.168.0.88` uses HomeWizard v1 and does not require pairing
+- `HOMEWIZARD_HOST=https://192.168.0.88` uses HomeWizard v2 and requires pairing
+- if you provide only a host or IP, the bridge defaults to `http://`
 
 ## Run
 
@@ -194,11 +201,13 @@ The first time, pair it:
 
 1. Start the bridge.
 2. Open `http://localhost:8080/ui` in a browser.
-3. Press `Start / Retry Pairing`.
-4. If the page tells you pairing is not enabled yet, press the button on the P1 meter.
-5. Press `Start / Retry Pairing` again within 30 seconds.
+3. Check the displayed API mode:
+4. If the target uses `http://`, the bridge is in v1 mode and no pairing is needed.
+5. If the target uses `https://`, the bridge is in v2 mode and you should press `Start / Retry Pairing`.
+6. If the page tells you pairing is not enabled yet, press the button on the P1 meter.
+7. Press `Start / Retry Pairing` again within 30 seconds.
 
-Once pairing succeeds, the token is saved and reused on restart.
+In v2 mode, once pairing succeeds, the token is saved and reused on restart.
 
 If you prefer scripts, `POST http://localhost:8080/pair` still works too.
 
@@ -228,7 +237,7 @@ http://bridge-host:8080/status
 ## Notes
 
 - HomeWizard documents v2 as HTTPS with bearer token auth. This bridge intentionally removes auth on its own HTTP routes for local-network use with Loxone.
-- In practice, some P1 installations only respond over plain HTTP. The bridge defaults to `http://` upstream unless you explicitly configure `https://`.
+- The bridge supports both HomeWizard v1 and v2. The upstream mode is chosen by the configured scheme in `HOMEWIZARD_HOST`.
 - The bridge defaults to `HOMEWIZARD_INSECURE_SKIP_VERIFY=true` because HomeWizard uses device-local TLS certificates. If you want stricter validation later, we can extend the client with the HomeWizard CA certificate and expected certificate hostname.
 - HomeWizard measurement fields are optional. If your smart meter does not provide a field, the endpoint returns `404` instead of inventing a value.
 - Gas and water are taken from HomeWizard's `external` measurement array and only exist if your setup provides those meters.

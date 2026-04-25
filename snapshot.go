@@ -11,9 +11,11 @@ import (
 var errValueUnavailable = errors.New("value unavailable")
 
 type snapshot struct {
-	Device      deviceInfo              `json:"device"`
-	Measurement measurement             `json:"measurement"`
-	Utilities   map[string]utilityMeter `json:"utilities"`
+	APIMode      string                  `json:"api_mode"`
+	AuthRequired bool                    `json:"auth_required"`
+	Device       deviceInfo              `json:"device"`
+	Measurement  measurement             `json:"measurement"`
+	Utilities    map[string]utilityMeter `json:"utilities"`
 }
 
 type utilityMeter struct {
@@ -36,9 +38,11 @@ func (c *homeWizardClient) Snapshot(ctx context.Context) (*snapshot, error) {
 	}
 
 	return &snapshot{
-		Device:      device,
-		Measurement: measurement,
-		Utilities:   collectUtilityMeters(measurement),
+		APIMode:      string(c.mode),
+		AuthRequired: c.AuthRequired(),
+		Device:       device,
+		Measurement:  measurement,
+		Utilities:    collectUtilityMeters(measurement),
 	}, nil
 }
 
@@ -46,29 +50,39 @@ func collectUtilityMeters(m measurement) map[string]utilityMeter {
 	utilities := make(map[string]utilityMeter)
 
 	external, ok := m["external"].([]any)
-	if !ok {
-		return utilities
+	if ok {
+		for _, raw := range external {
+			entry, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+
+			meter := utilityMeter{
+				Type:      stringValue(entry["type"]),
+				UniqueID:  stringValue(entry["unique_id"]),
+				Timestamp: plainStringValue(entry["timestamp"]),
+				Unit:      stringValue(entry["unit"]),
+				Value:     entry["value"],
+			}
+
+			switch meter.Type {
+			case "gas_meter":
+				utilities["gas"] = meter
+			case "water_meter":
+				utilities["water"] = meter
+			}
+		}
 	}
 
-	for _, raw := range external {
-		entry, ok := raw.(map[string]any)
-		if !ok {
-			continue
-		}
-
-		meter := utilityMeter{
-			Type:      stringValue(entry["type"]),
-			UniqueID:  stringValue(entry["unique_id"]),
-			Timestamp: stringValue(entry["timestamp"]),
-			Unit:      stringValue(entry["unit"]),
-			Value:     entry["value"],
-		}
-
-		switch meter.Type {
-		case "gas_meter":
-			utilities["gas"] = meter
-		case "water_meter":
-			utilities["water"] = meter
+	if _, ok := utilities["gas"]; !ok {
+		if value, ok := m["total_gas_m3"]; ok {
+			utilities["gas"] = utilityMeter{
+				Type:      "gas_meter",
+				UniqueID:  plainStringValue(m["gas_unique_id"]),
+				Timestamp: plainStringValue(m["gas_timestamp"]),
+				Unit:      "m3",
+				Value:     value,
+			}
 		}
 	}
 
@@ -78,6 +92,19 @@ func collectUtilityMeters(m measurement) map[string]utilityMeter {
 func stringValue(value any) string {
 	text, _ := value.(string)
 	return text
+}
+
+func plainStringValue(value any) string {
+	switch typed := value.(type) {
+	case string:
+		return typed
+	case json.Number:
+		return typed.String()
+	case nil:
+		return ""
+	default:
+		return formatPlainValue(typed)
+	}
 }
 
 func numberValue(value any) (float64, bool) {
@@ -100,10 +127,10 @@ func numberValue(value any) (float64, bool) {
 	}
 }
 
-func measurementNumber(s *snapshot, key string) (float64, error) {
-	value, ok := s.Measurement[key]
+func measurementNumberAny(s *snapshot, keys ...string) (float64, error) {
+	value, key, ok := measurementValueAny(s, keys...)
 	if !ok {
-		return 0, fmt.Errorf("%w: measurement.%s", errValueUnavailable, key)
+		return 0, fmt.Errorf("%w: measurement.%s", errValueUnavailable, keys[0])
 	}
 
 	number, ok := numberValue(value)
@@ -114,17 +141,30 @@ func measurementNumber(s *snapshot, key string) (float64, error) {
 	return number, nil
 }
 
-func measurementString(s *snapshot, key string) (string, error) {
-	value, ok := s.Measurement[key]
+func measurementValueAny(s *snapshot, keys ...string) (any, string, bool) {
+	for _, key := range keys {
+		value, ok := s.Measurement[key]
+		if ok {
+			return value, key, true
+		}
+	}
+	return nil, "", false
+}
+
+func measurementStringAny(s *snapshot, keys ...string) (string, error) {
+	value, key, ok := measurementValueAny(s, keys...)
 	if !ok {
-		return "", fmt.Errorf("%w: measurement.%s", errValueUnavailable, key)
+		return "", fmt.Errorf("%w: measurement.%s", errValueUnavailable, keys[0])
 	}
 
-	text, ok := value.(string)
-	if !ok {
+	return plainStringValueForKey(value, key)
+}
+
+func plainStringValueForKey(value any, key string) (string, error) {
+	text := plainStringValue(value)
+	if text == "" {
 		return "", fmt.Errorf("%w: measurement.%s", errValueUnavailable, key)
 	}
-
 	return text, nil
 }
 

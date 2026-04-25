@@ -18,6 +18,13 @@ const (
 	requestTimeout   = 10 * time.Second
 )
 
+type apiMode string
+
+const (
+	apiModeV1 apiMode = "v1"
+	apiModeV2 apiMode = "v2"
+)
+
 type deviceInfo map[string]any
 type measurement map[string]any
 
@@ -26,6 +33,7 @@ type homeWizardClient struct {
 	httpClient *http.Client
 	tokenStore *tokenStore
 	userName   string
+	mode       apiMode
 }
 
 type homeWizardError struct {
@@ -52,6 +60,7 @@ func newHomeWizardClient(cfg config, store *tokenStore) *homeWizardClient {
 		},
 		tokenStore: store,
 		userName:   cfg.HomeWizardUserName,
+		mode:       apiModeFromURL(cfg.HomeWizardHost),
 	}
 
 	if cfg.Token != "" {
@@ -61,7 +70,22 @@ func newHomeWizardClient(cfg config, store *tokenStore) *homeWizardClient {
 	return client
 }
 
+func apiModeFromURL(raw string) apiMode {
+	if strings.HasPrefix(strings.ToLower(raw), "https://") {
+		return apiModeV2
+	}
+	return apiModeV1
+}
+
+func (c *homeWizardClient) AuthRequired() bool {
+	return c.mode == apiModeV2
+}
+
 func (c *homeWizardClient) Pair(ctx context.Context) (*pairResponse, int, error) {
+	if !c.AuthRequired() {
+		return nil, http.StatusOK, nil
+	}
+
 	body := map[string]string{"name": c.userName}
 	req, err := c.newJSONRequest(ctx, http.MethodPost, "/api/user", body, "")
 	if err != nil {
@@ -98,7 +122,7 @@ func (c *homeWizardClient) Pair(ctx context.Context) (*pairResponse, int, error)
 
 func (c *homeWizardClient) GetDeviceInfo(ctx context.Context) (deviceInfo, error) {
 	var out deviceInfo
-	if err := c.authorizedJSON(ctx, http.MethodGet, "/api", nil, &out); err != nil {
+	if err := c.getJSON(ctx, http.MethodGet, "/api", nil, &out); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -106,14 +130,29 @@ func (c *homeWizardClient) GetDeviceInfo(ctx context.Context) (deviceInfo, error
 
 func (c *homeWizardClient) GetMeasurement(ctx context.Context) (measurement, error) {
 	var out measurement
-	if err := c.authorizedJSON(ctx, http.MethodGet, "/api/measurement", nil, &out); err != nil {
+	path := "/api/measurement"
+	if c.mode == apiModeV1 {
+		path = "/api/v1/data"
+	}
+	if err := c.getJSON(ctx, http.MethodGet, path, nil, &out); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
 func (c *homeWizardClient) GetTelegram(ctx context.Context) (string, error) {
-	req, err := c.newRequest(ctx, http.MethodGet, "/api/telegram", nil, c.tokenStore.Get())
+	path := "/api/telegram"
+	if c.mode == apiModeV1 {
+		path = "/api/v1/telegram"
+	}
+	token := ""
+	if c.AuthRequired() {
+		token = c.tokenStore.Get()
+		if token == "" {
+			return "", errors.New("no HomeWizard token configured; call POST /pair first")
+		}
+	}
+	req, err := c.newRequest(ctx, http.MethodGet, path, nil, token)
 	if err != nil {
 		return "", err
 	}
@@ -137,10 +176,13 @@ func (c *homeWizardClient) GetTelegram(ctx context.Context) (string, error) {
 	return string(raw), nil
 }
 
-func (c *homeWizardClient) authorizedJSON(ctx context.Context, method, path string, body any, out any) error {
-	token := c.tokenStore.Get()
-	if token == "" {
-		return errors.New("no HomeWizard token configured; call POST /pair first")
+func (c *homeWizardClient) getJSON(ctx context.Context, method, path string, body any, out any) error {
+	token := ""
+	if c.AuthRequired() {
+		token = c.tokenStore.Get()
+		if token == "" {
+			return errors.New("no HomeWizard token configured; call POST /pair first")
+		}
 	}
 
 	req, err := c.newJSONRequest(ctx, method, path, body, token)
@@ -188,7 +230,9 @@ func (c *homeWizardClient) newRequest(ctx context.Context, method, path string, 
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 
-	req.Header.Set("X-Api-Version", apiVersionHeader)
+	if c.mode == apiModeV2 {
+		req.Header.Set("X-Api-Version", apiVersionHeader)
+	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
