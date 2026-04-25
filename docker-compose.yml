@@ -1,6 +1,6 @@
 services:
   homewizard-api-bridge:
-    image: ghcr.io/digitalrobin/homewizard-api-bridge:latest
+    image: ghcr.io/digitalrobin/homewizard-api-bridge:v1.0.0
     container_name: homewizard-api-bridge
     restart: unless-stopped
     ports:

@@ -1,0 +1,131 @@
+name: Publish Release Assets
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  APP_NAME: homewizard-api-bridge
+
+jobs:
+  build-binaries:
+    name: Build ${{ matrix.id }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: linux-amd64
+            goos: linux
+            goarch: amd64
+            ext: tar.gz
+            dir_suffix: linux_amd64
+            file_suffix: linux_amd64
+          - id: linux-arm64
+            goos: linux
+            goarch: arm64
+            ext: tar.gz
+            dir_suffix: linux_arm64
+            file_suffix: linux_arm64
+          - id: linux-armv7
+            goos: linux
+            goarch: arm
+            goarm: "7"
+            ext: tar.gz
+            dir_suffix: linux_armv7
+            file_suffix: linux_armv7
+          - id: darwin-amd64
+            goos: darwin
+            goarch: amd64
+            ext: tar.gz
+            dir_suffix: darwin_amd64
+            file_suffix: darwin_amd64
+          - id: darwin-arm64
+            goos: darwin
+            goarch: arm64
+            ext: tar.gz
+            dir_suffix: darwin_arm64
+            file_suffix: darwin_arm64
+          - id: windows-amd64
+            goos: windows
+            goarch: amd64
+            ext: zip
+            dir_suffix: windows_amd64
+            file_suffix: windows_amd64
+          - id: windows-arm64
+            goos: windows
+            goarch: arm64
+            ext: zip
+            dir_suffix: windows_arm64
+            file_suffix: windows_arm64
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+        run: |
+          mkdir -p dist
+          BIN_NAME="${APP_NAME}"
+          if [ "${GOOS}" = "windows" ]; then
+            BIN_NAME="${BIN_NAME}.exe"
+          fi
+          OUT_DIR="dist/${APP_NAME}_${{ matrix.dir_suffix }}"
+          mkdir -p "${OUT_DIR}"
+          CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o "${OUT_DIR}/${BIN_NAME}" .
+
+      - name: Package archive
+        run: |
+          BASE_NAME="${APP_NAME}_${{ github.ref_name }}_${{ matrix.file_suffix }}"
+          SRC_DIR="dist/${APP_NAME}_${{ matrix.dir_suffix }}"
+          mkdir -p release
+          if [ "${{ matrix.ext }}" = "zip" ]; then
+            (cd "${SRC_DIR}" && zip -9 -r "../../release/${BASE_NAME}.zip" .)
+          else
+            tar -C "${SRC_DIR}" -czf "release/${BASE_NAME}.tar.gz" .
+          fi
+
+      - name: Upload packaged asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.id }}
+          path: release/*
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: build-binaries
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download packaged assets
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          pattern: release-*
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd release-assets
+          sha256sum * > checksums.txt
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            release-assets/*

@@ -124,28 +124,56 @@ Important for Docker and Compose:
 
 ## Hosted image
 
-This repo is set up to publish a Docker image to GitHub Container Registry on pushes to `main` and on version tags.
+This repo is set up to publish a Docker image to GitHub Container Registry only on version tags such as `v1.0.0`.
 
 Published image:
 
 ```text
-ghcr.io/digitalrobin/homewizard-api-bridge:latest
+ghcr.io/digitalrobin/homewizard-api-bridge:v1.0.0
 ```
 
-Other generated tags include:
+Generated tags include:
 
-- `ghcr.io/digitalrobin/homewizard-api-bridge:main`
-- `ghcr.io/digitalrobin/homewizard-api-bridge:sha-<commit>`
-- `ghcr.io/digitalrobin/homewizard-api-bridge:v1.0.0` when you push a matching Git tag
+- `ghcr.io/digitalrobin/homewizard-api-bridge:v1.0.0`
+- `ghcr.io/digitalrobin/homewizard-api-bridge:latest`
 
 The publish workflow lives in [.github/workflows/docker.yml](/Users/robin/Documents/projects/homewizard-bridge/.github/workflows/docker.yml).
 
-After you push this repository to GitHub:
+Tagged releases also publish native binaries to GitHub Releases for these platforms:
 
-1. Open the repository on GitHub.
-2. Go to `Actions`.
-3. Let the `Publish Docker Image` workflow run on `main`, or trigger it manually.
-4. On your server, use the included `docker-compose.yml` and pull the image directly from GHCR.
+- Linux `amd64`
+- Linux `arm64`
+- Linux `armv7`
+- macOS `amd64`
+- macOS `arm64`
+- Windows `amd64`
+- Windows `arm64`
+
+That release workflow lives in [.github/workflows/release.yml](/Users/robin/Documents/projects/homewizard-bridge/.github/workflows/release.yml) and also attaches a `checksums.txt` file.
+
+Release flow:
+
+1. Push your normal commits without publishing an image.
+2. When you want to release, create and push a Git tag such as `v1.0.0`.
+3. GitHub Actions publishes the container image for that tag.
+4. GitHub Actions also builds native archives and attaches them to the GitHub Release.
+5. Update your server or compose file to the version tag you want to run.
+
+Example release commands:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Then on the server:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+If you want to upgrade later, change the image tag in `docker-compose.yml` to the next release, for example `v1.1.0`, and pull again.
 
 If your GHCR package is private, log in on the server first:
 
