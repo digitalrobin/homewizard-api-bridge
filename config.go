@@ -36,8 +36,8 @@ func loadConfig() (config, error) {
 	}
 
 	cfg.HomeWizardHost = strings.TrimRight(cfg.HomeWizardHost, "/")
-	if !strings.HasPrefix(cfg.HomeWizardHost, "https://") {
-		cfg.HomeWizardHost = "https://" + cfg.HomeWizardHost
+	if !strings.Contains(cfg.HomeWizardHost, "://") {
+		cfg.HomeWizardHost = "http://" + cfg.HomeWizardHost
 	}
 
 	if !strings.HasPrefix(cfg.HomeWizardUserName, "local/") {

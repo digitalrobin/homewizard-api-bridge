@@ -120,6 +120,8 @@ Important for Docker and Compose:
 
 - Keep `/data` mounted so the pairing token survives container recreation.
 - Update `HOMEWIZARD_HOST` in `docker-compose.yml` to your P1 meter IP or hostname.
+- If you set only an IP or hostname, the bridge now defaults to `http://`.
+- If your device requires TLS, set `HOMEWIZARD_HOST=https://...` explicitly.
 - The included compose file publishes the bridge on port `8080`.
 
 ## Hosted image
@@ -226,6 +228,7 @@ http://bridge-host:8080/status
 ## Notes
 
 - HomeWizard documents v2 as HTTPS with bearer token auth. This bridge intentionally removes auth on its own HTTP routes for local-network use with Loxone.
+- In practice, some P1 installations only respond over plain HTTP. The bridge defaults to `http://` upstream unless you explicitly configure `https://`.
 - The bridge defaults to `HOMEWIZARD_INSECURE_SKIP_VERIFY=true` because HomeWizard uses device-local TLS certificates. If you want stricter validation later, we can extend the client with the HomeWizard CA certificate and expected certificate hostname.
 - HomeWizard measurement fields are optional. If your smart meter does not provide a field, the endpoint returns `404` instead of inventing a value.
 - Gas and water are taken from HomeWizard's `external` measurement array and only exist if your setup provides those meters.
