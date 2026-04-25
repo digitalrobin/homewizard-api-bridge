@@ -9,13 +9,15 @@ import (
 
 type server struct {
 	client  *homeWizardClient
+	usage   *usageStore
 	metrics map[string]metricRoute
 }
 
-func newServer(client *homeWizardClient) *server {
+func newServer(client *homeWizardClient, usage *usageStore) *server {
 	return &server{
 		client:  client,
-		metrics: metricRouteMap(),
+		usage:   usage,
+		metrics: metricRouteMap(usage),
 	}
 }
 
@@ -184,6 +186,10 @@ func (s *server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		writeProxyError(w, err)
 		return
 	}
+	if err := s.usage.Record(snapshot); err != nil {
+		writeProxyError(w, err)
+		return
+	}
 
 	values := make(map[string]any, len(s.metrics))
 	unavailable := make([]string, 0)
@@ -268,6 +274,10 @@ func (s *server) handleMetric(path string) http.HandlerFunc {
 		route := s.metrics[path]
 		snapshot, err := s.client.Snapshot(r.Context())
 		if err != nil {
+			writeProxyError(w, err)
+			return
+		}
+		if err := s.usage.Record(snapshot); err != nil {
 			writeProxyError(w, err)
 			return
 		}

@@ -17,7 +17,7 @@ type metricRoute struct {
 	Resolver    metricResolver
 }
 
-func metricRoutes() []metricRoute {
+func metricRoutes(usage *usageStore) []metricRoute {
 	return []metricRoute{
 		{
 			Group:       "electricity",
@@ -80,6 +80,72 @@ func metricRoutes() []metricRoute {
 			Example:     "2876.514",
 			Resolver: func(s *snapshot) (any, error) {
 				return measurementNumberAny(s, "energy_export_kwh", "total_power_export_kwh")
+			},
+		},
+		{
+			Group:       "electricity",
+			Path:        "/electricity/daily-usage",
+			Description: "Imported electricity usage since the start of the current day.",
+			Unit:        "kWh",
+			Source:      "derived from persisted total import history",
+			Example:     "8.412",
+			Resolver: func(s *snapshot) (any, error) {
+				return usage.Usage(s, "electricity_import_kwh", usageDaily)
+			},
+		},
+		{
+			Group:       "electricity",
+			Path:        "/electricity/weekly-usage",
+			Description: "Imported electricity usage since the start of the current week.",
+			Unit:        "kWh",
+			Source:      "derived from persisted total import history",
+			Example:     "53.928",
+			Resolver: func(s *snapshot) (any, error) {
+				return usage.Usage(s, "electricity_import_kwh", usageWeekly)
+			},
+		},
+		{
+			Group:       "electricity",
+			Path:        "/electricity/monthly-usage",
+			Description: "Imported electricity usage since the start of the current month.",
+			Unit:        "kWh",
+			Source:      "derived from persisted total import history",
+			Example:     "241.003",
+			Resolver: func(s *snapshot) (any, error) {
+				return usage.Usage(s, "electricity_import_kwh", usageMonthly)
+			},
+		},
+		{
+			Group:       "electricity",
+			Path:        "/electricity/daily-export",
+			Description: "Exported electricity since the start of the current day.",
+			Unit:        "kWh",
+			Source:      "derived from persisted total export history",
+			Example:     "4.331",
+			Resolver: func(s *snapshot) (any, error) {
+				return usage.Usage(s, "electricity_export_kwh", usageDaily)
+			},
+		},
+		{
+			Group:       "electricity",
+			Path:        "/electricity/weekly-export",
+			Description: "Exported electricity since the start of the current week.",
+			Unit:        "kWh",
+			Source:      "derived from persisted total export history",
+			Example:     "27.842",
+			Resolver: func(s *snapshot) (any, error) {
+				return usage.Usage(s, "electricity_export_kwh", usageWeekly)
+			},
+		},
+		{
+			Group:       "electricity",
+			Path:        "/electricity/monthly-export",
+			Description: "Exported electricity since the start of the current month.",
+			Unit:        "kWh",
+			Source:      "derived from persisted total export history",
+			Example:     "118.443",
+			Resolver: func(s *snapshot) (any, error) {
+				return usage.Usage(s, "electricity_export_kwh", usageMonthly)
 			},
 		},
 		{
@@ -281,6 +347,39 @@ func metricRoutes() []metricRoute {
 			},
 		},
 		{
+			Group:       "gas",
+			Path:        "/gas/daily-usage",
+			Description: "Gas usage since the start of the current day.",
+			Unit:        "m3",
+			Source:      "derived from persisted gas total history",
+			Example:     "0.736",
+			Resolver: func(s *snapshot) (any, error) {
+				return usage.Usage(s, "gas_m3", usageDaily)
+			},
+		},
+		{
+			Group:       "gas",
+			Path:        "/gas/weekly-usage",
+			Description: "Gas usage since the start of the current week.",
+			Unit:        "m3",
+			Source:      "derived from persisted gas total history",
+			Example:     "4.112",
+			Resolver: func(s *snapshot) (any, error) {
+				return usage.Usage(s, "gas_m3", usageWeekly)
+			},
+		},
+		{
+			Group:       "gas",
+			Path:        "/gas/monthly-usage",
+			Description: "Gas usage since the start of the current month.",
+			Unit:        "m3",
+			Source:      "derived from persisted gas total history",
+			Example:     "18.903",
+			Resolver: func(s *snapshot) (any, error) {
+				return usage.Usage(s, "gas_m3", usageMonthly)
+			},
+		},
+		{
 			Group:       "water",
 			Path:        "/water/total-usage",
 			Description: "Total water meter reading.",
@@ -328,11 +427,44 @@ func metricRoutes() []metricRoute {
 				return utility.Unit, nil
 			},
 		},
+		{
+			Group:       "water",
+			Path:        "/water/daily-usage",
+			Description: "Water usage since the start of the current day.",
+			Unit:        "m3",
+			Source:      "derived from persisted water total history",
+			Example:     "0.182",
+			Resolver: func(s *snapshot) (any, error) {
+				return usage.Usage(s, "water_m3", usageDaily)
+			},
+		},
+		{
+			Group:       "water",
+			Path:        "/water/weekly-usage",
+			Description: "Water usage since the start of the current week.",
+			Unit:        "m3",
+			Source:      "derived from persisted water total history",
+			Example:     "1.044",
+			Resolver: func(s *snapshot) (any, error) {
+				return usage.Usage(s, "water_m3", usageWeekly)
+			},
+		},
+		{
+			Group:       "water",
+			Path:        "/water/monthly-usage",
+			Description: "Water usage since the start of the current month.",
+			Unit:        "m3",
+			Source:      "derived from persisted water total history",
+			Example:     "4.327",
+			Resolver: func(s *snapshot) (any, error) {
+				return usage.Usage(s, "water_m3", usageMonthly)
+			},
+		},
 	}
 }
 
-func metricRouteMap() map[string]metricRoute {
-	routes := metricRoutes()
+func metricRouteMap(usage *usageStore) map[string]metricRoute {
+	routes := metricRoutes(usage)
 	index := make(map[string]metricRoute, len(routes))
 	for _, route := range routes {
 		index[route.Path] = route

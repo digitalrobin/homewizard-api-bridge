@@ -19,9 +19,13 @@ func main() {
 	}
 
 	client := newHomeWizardClient(cfg, store)
+	usage, err := newUsageStore(cfg.DataDir)
+	if err != nil {
+		log.Fatal(err)
+	}
 	srv := &http.Server{
 		Addr:              cfg.BindAddr,
-		Handler:           newServer(client).routes(),
+		Handler:           newServer(client, usage).routes(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
