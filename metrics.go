@@ -314,6 +314,17 @@ func metricRoutes(usage *usageStore) []metricRoute {
 		},
 		{
 			Group:       "gas",
+			Path:        "/gas/current-usage",
+			Description: "Estimated current gas usage as a rolling rate derived from recent total meter history.",
+			Unit:        "m3/h",
+			Source:      "derived from persisted gas total history over the recent sample window",
+			Example:     "0.842",
+			Resolver: func(s *snapshot) (any, error) {
+				return usage.RatePerHour(s, "gas_m3", gasRateWindow, gasRateMinAge)
+			},
+		},
+		{
+			Group:       "gas",
 			Path:        "/gas/timestamp",
 			Description: "Timestamp of the latest gas reading.",
 			Source:      "measurement.external[type=gas_meter].timestamp",

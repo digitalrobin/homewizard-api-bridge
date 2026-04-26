@@ -13,9 +13,11 @@ import (
 type usagePeriod string
 
 const (
-	usageDaily   usagePeriod = "daily"
-	usageWeekly  usagePeriod = "weekly"
-	usageMonthly usagePeriod = "monthly"
+	usageDaily    usagePeriod = "daily"
+	usageWeekly   usagePeriod = "weekly"
+	usageMonthly  usagePeriod = "monthly"
+	gasRateWindow             = time.Hour
+	gasRateMinAge             = 5 * time.Minute
 )
 
 type usageStore struct {
@@ -116,6 +118,39 @@ func (s *usageStore) Usage(snapshot *snapshot, metric string, period usagePeriod
 	return usage, nil
 }
 
+func (s *usageStore) RatePerHour(snapshot *snapshot, metric string, window, minAge time.Duration) (float64, error) {
+	currentTotals := snapshotUsageTotals(snapshot)
+	current, ok := currentTotals[metric]
+	if !ok {
+		return 0, fmt.Errorf("%w: %s total", errValueUnavailable, metric)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	now := s.now().UTC()
+	reference, ok := s.referenceSample(metric, now, window, minAge)
+	if !ok {
+		return 0, fmt.Errorf("%w: %s rate history", errValueUnavailable, metric)
+	}
+
+	baseline, ok := reference.Totals[metric]
+	if !ok {
+		return 0, fmt.Errorf("%w: %s rate history", errValueUnavailable, metric)
+	}
+
+	elapsedHours := now.Sub(reference.ObservedAt).Hours()
+	if elapsedHours <= 0 {
+		return 0, fmt.Errorf("%w: %s rate history", errValueUnavailable, metric)
+	}
+
+	rate := (current - baseline) / elapsedHours
+	if rate < 0 {
+		return 0, nil
+	}
+	return rate, nil
+}
+
 func (s *usageStore) baseline(metric string, start time.Time) (float64, bool) {
 	var candidate *usageSample
 	for i := len(s.data.Samples) - 1; i >= 0; i-- {
@@ -142,6 +177,43 @@ func (s *usageStore) baseline(metric string, start time.Time) (float64, bool) {
 	}
 
 	return 0, false
+}
+
+func (s *usageStore) referenceSample(metric string, now time.Time, window, minAge time.Duration) (usageSample, bool) {
+	cutoff := now.Add(-window)
+	var candidate usageSample
+	found := false
+
+	for _, sample := range s.data.Samples {
+		if sample.ObservedAt.After(now.Add(-minAge)) {
+			continue
+		}
+		if _, ok := sample.Totals[metric]; !ok {
+			continue
+		}
+		if sample.ObservedAt.Before(cutoff) {
+			continue
+		}
+		candidate = sample
+		found = true
+		break
+	}
+
+	if found {
+		return candidate, true
+	}
+
+	for i := len(s.data.Samples) - 1; i >= 0; i-- {
+		sample := s.data.Samples[i]
+		if sample.ObservedAt.After(now.Add(-minAge)) {
+			continue
+		}
+		if _, ok := sample.Totals[metric]; ok {
+			return sample, true
+		}
+	}
+
+	return usageSample{}, false
 }
 
 func (s *usageStore) prune(now time.Time) {

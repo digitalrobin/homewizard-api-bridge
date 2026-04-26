@@ -64,6 +64,7 @@ Electricity:
 Gas:
 
 - `GET /gas/total-usage`
+- `GET /gas/current-usage`
 - `GET /gas/daily-usage`
 - `GET /gas/weekly-usage`
 - `GET /gas/monthly-usage`
@@ -239,6 +240,7 @@ http://bridge-host:8080/electricity/total-usage
 http://bridge-host:8080/electricity/daily-usage
 http://bridge-host:8080/electricity/monthly-export
 http://bridge-host:8080/gas/total-usage
+http://bridge-host:8080/gas/current-usage
 http://bridge-host:8080/gas/weekly-usage
 http://bridge-host:8080/water/total-usage
 http://bridge-host:8080/water/daily-usage
@@ -257,4 +259,5 @@ http://bridge-host:8080/status
 - The bridge defaults to `HOMEWIZARD_INSECURE_SKIP_VERIFY=true` because HomeWizard uses device-local TLS certificates. If you want stricter validation later, we can extend the client with the HomeWizard CA certificate and expected certificate hostname.
 - HomeWizard measurement fields are optional. If your smart meter does not provide a field, the endpoint returns `404` instead of inventing a value.
 - Daily, weekly, and monthly usage endpoints are derived from persisted totals stored in `/data/usage-history.json`. They may return `404` until the bridge has recorded enough history for the requested period.
+- `/gas/current-usage` is an estimated rolling rate in `m3/h`, derived from recent persisted gas totals rather than a native instantaneous flow reading.
 - Gas and water are taken from HomeWizard's `external` measurement array and only exist if your setup provides those meters.
